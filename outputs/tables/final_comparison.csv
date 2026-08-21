@@ -1,0 +1,5 @@
+Model,Accuracy_Baseline,Precision_Baseline,Recall_Baseline,F1 Score_Baseline,ROC-AUC_Baseline,Accuracy_Tuned,Precision_Tuned,Recall_Tuned,F1 Score_Tuned,ROC-AUC_Tuned
+Logistic Regression,0.9347,0.4762,0.1471,0.2247,0.8325,0.8477,0.2402,0.6324,0.3482,0.8285
+KNN,0.9309,0.2727,0.0441,0.0759,0.6513,0.9309,0.3684,0.1029,0.1609,0.6231
+Random Forest,0.9366,0.5333,0.1176,0.1928,0.8531,0.93,0.4318,0.2794,0.3393,0.8627
+XGBoost,0.9328,0.4545,0.2206,0.297,0.8672,0.9196,0.3803,0.3971,0.3885,0.8561

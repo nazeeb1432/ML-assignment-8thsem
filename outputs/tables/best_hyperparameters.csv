@@ -1,0 +1,5 @@
+Model,Best_CV_F1,Best_Params
+Logistic Regression,0.37631454332324543,"{'classifier__C': 0.1, 'classifier__class_weight': 'balanced', 'classifier__penalty': 'l1'}"
+KNN,0.29214494259440144,"{'classifier__n_neighbors': 3, 'classifier__p': 2, 'classifier__weights': 'uniform'}"
+Random Forest,0.4368502279261925,"{'classifier__n_estimators': 200, 'classifier__min_samples_split': 2, 'classifier__min_samples_leaf': 4, 'classifier__max_features': 'log2', 'classifier__max_depth': 30, 'classifier__class_weight': 'balanced'}"
+XGBoost,0.44068038569313,"{'classifier__subsample': 0.8, 'classifier__scale_pos_weight': 14.416058394160585, 'classifier__n_estimators': 100, 'classifier__max_depth': 6, 'classifier__learning_rate': 0.1, 'classifier__colsample_bytree': 1.0}"

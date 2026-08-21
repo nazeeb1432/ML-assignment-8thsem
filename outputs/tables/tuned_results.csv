@@ -1,0 +1,5 @@
+Model,Accuracy,Precision,Recall,F1 Score,ROC-AUC,Best_Params
+Logistic Regression,0.847682119205298,0.24022346368715083,0.6323529411764706,0.3481781376518219,0.8284958068161542,"{'classifier__C': 0.1, 'classifier__class_weight': 'balanced', 'classifier__penalty': 'l1'}"
+KNN,0.9309366130558183,0.3684210526315789,0.10294117647058823,0.16091954022988506,0.6230521025397014,"{'classifier__n_neighbors': 3, 'classifier__p': 2, 'classifier__weights': 'uniform'}"
+Random Forest,0.9299905392620624,0.4318181818181818,0.27941176470588236,0.3392857142857143,0.8627401415571284,"{'classifier__n_estimators': 200, 'classifier__min_samples_split': 2, 'classifier__min_samples_leaf': 4, 'classifier__max_features': 'log2', 'classifier__max_depth': 30, 'classifier__class_weight': 'balanced'}"
+XGBoost,0.9195837275307474,0.38028169014084506,0.39705882352941174,0.38848920863309355,0.8560786296318325,"{'classifier__subsample': 0.8, 'classifier__scale_pos_weight': 14.416058394160585, 'classifier__n_estimators': 100, 'classifier__max_depth': 6, 'classifier__learning_rate': 0.1, 'classifier__colsample_bytree': 1.0}"
