@@ -1,13 +1,13 @@
 ,Accuracy,Precision,Recall,F1 Score,ROC-AUC
-Logistic Regression (Baseline),0.9347,0.4762,0.1471,0.2247,0.8325
-KNN (Baseline),0.9309,0.2727,0.0441,0.0759,0.6513
-Random Forest (Baseline),0.9366,0.5333,0.1176,0.1928,0.8531
-XGBoost (Baseline),0.9328,0.4545,0.2206,0.297,0.8672
-Logistic Regression (Class-Weighted),0.8486,0.2416,0.6324,0.3496,0.8293
-KNN (Class-Weighted),0.9309,0.2727,0.0441,0.0759,0.6513
-Random Forest (Class-Weighted),0.9385,0.6364,0.1029,0.1772,0.8658
-XGBoost (Class-Weighted),0.9253,0.3962,0.3088,0.3471,0.8534
-Logistic Regression (SMOTE),0.8543,0.244,0.6029,0.3475,0.8299
-KNN (SMOTE),0.842,0.1847,0.4265,0.2578,0.7059
-Random Forest (SMOTE),0.9309,0.4444,0.2941,0.354,0.8326
-XGBoost (SMOTE),0.9281,0.4091,0.2647,0.3214,0.8322
+Logistic Regression (Baseline),0.9384,0.56,0.2059,0.3011,0.8448
+KNN (Baseline),0.9403,0.6667,0.1471,0.241,0.7031
+Random Forest (Baseline),0.9384,0.5789,0.1618,0.2529,0.8694
+XGBoost (Baseline),0.9394,0.5526,0.3088,0.3962,0.8761
+Logistic Regression (Class-Weighted),0.8305,0.2239,0.6618,0.3346,0.8426
+KNN (Class-Weighted),0.9403,0.6667,0.1471,0.241,0.7031
+Random Forest (Class-Weighted),0.9337,0.4444,0.1176,0.186,0.8662
+XGBoost (Class-Weighted),0.9347,0.4915,0.4265,0.4567,0.8642
+Logistic Regression (SMOTE),0.8333,0.2216,0.6324,0.3282,0.8396
+KNN (SMOTE),0.8277,0.1968,0.5441,0.2891,0.7682
+Random Forest (SMOTE),0.9271,0.4182,0.3382,0.374,0.8445
+XGBoost (SMOTE),0.9375,0.5208,0.3676,0.431,0.8513

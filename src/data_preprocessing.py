@@ -44,23 +44,44 @@ def clean_data(df: pd.DataFrame, verbose: bool = True) -> pd.DataFrame:
     (see report/final_report.md, Section 3 "Dataset Description"):
 
       - glucose == 0 mmol/L        -> incompatible with a living patient
-      - height < 1.0 m (adult)     -> impossible adult height, also causes
-                                       BMI values as high as 574 (since
-                                       bmi = weight / height^2 in this data)
-      - pulse_rate < 30 bpm        -> incompatible with life
+                                       (1 row)
+      - height < 1.2 m (adult)     -> implausible adult stature for a
+                                       general clinical survey; also drives
+                                       BMI values as high as 574 since
+                                       bmi = weight / height^2 in this data
+                                       (6 rows, e.g. height = 0.36 m,
+                                       0.64 m, and three rows sharing an
+                                       identical 1.19 m / 55-60 kg pattern
+                                       that looks like a repeated data-entry
+                                       error rather than a real short-stature
+                                       cohort)
+      - pulse_rate < 30 bpm        -> incompatible with life (3 rows)
+      - bmi < 10 or bmi > 70       -> incompatible with life at the low end
+                                       (e.g. 3 kg adult -> bmi 1.22, 21.9 kg
+                                       adult -> bmi 8.29) and essentially
+                                       impossible to survey in person at the
+                                       high end; catches implausible
+                                       weight/height combinations directly
+                                       rather than guessing a raw weight
+                                       cutoff (2 + 2 rows, both already
+                                       overlapping the height rule above)
 
     This is NOT a blanket outlier-removal step. Plausible-but-extreme
-    values (e.g. very low blood pressure, short-but-real stature) are left
-    untouched; only values that are biologically impossible are removed.
-    Duplicate rows are also checked and removed if present.
+    values that are simply rare rather than impossible (e.g. glucose up to
+    ~33 mmol/L, which also occurs among labeled diabetics in this dataset,
+    or a single systolic_bp = 62 mmHg) are left untouched; only values that
+    are biologically impossible are removed. Duplicate rows are also
+    checked and removed if present.
     """
     df = df.copy()
     n_start = len(df)
 
     impossible_mask = (
         (df["glucose"] == 0)
-        | (df["height"] < 1.0)
+        | (df["height"] < 1.2)
         | (df["pulse_rate"] < 30)
+        | (df["bmi"] < 10)
+        | (df["bmi"] > 70)
     )
     n_impossible = int(impossible_mask.sum())
     df = df.loc[~impossible_mask].reset_index(drop=True)

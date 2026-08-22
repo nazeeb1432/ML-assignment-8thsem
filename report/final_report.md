@@ -2,7 +2,7 @@
 
 ## Abstract
 
-Diabetes is a growing public health concern in Bangladesh, and early risk identification can help direct patients toward diagnostic testing and lifestyle intervention. This project compares four machine learning algorithms — Logistic Regression, K-Nearest Neighbors (KNN), Random Forest, and XGBoost — for binary classification of diabetes status (Diabetic / Non-Diabetic) using the DiaBD Bangladesh clinical dataset (5,288 records, 14 clinical/demographic features). The dataset exhibits severe class imbalance (6.47% diabetic). All models were evaluated with a stratified 80/20 train-test split, and compared across accuracy, precision, recall, F1-score, and ROC-AUC — with particular attention to diabetic-class recall, since accuracy alone was found to be misleading (baseline models scored 93–94% accuracy while missing 78–96% of diabetic patients). Two imbalance-handling strategies (class weighting and SMOTE) were compared against the imbalanced baseline, and all four algorithms were then tuned via 5-fold cross-validated grid/randomized search optimizing F1-score. After tuning, XGBoost achieved the best F1-score (0.388) and a strong ROC-AUC (0.856), Random Forest achieved the best ROC-AUC (0.863), and Logistic Regression achieved by far the highest recall (63.2%) at the cost of precision. `hypertensive` status and `glucose` level were consistently the strongest predictors across all interpretable models. The results show that class-imbalance handling is essential on this dataset and that model choice should depend on the intended use case (screening vs. confirmatory triage) rather than accuracy alone.
+Diabetes is a growing public health concern in Bangladesh, and early risk identification can help direct patients toward diagnostic testing and lifestyle intervention. This project compares four machine learning algorithms — Logistic Regression, K-Nearest Neighbors (KNN), Random Forest, and XGBoost — for binary classification of diabetes status (Diabetic / Non-Diabetic) using the DiaBD Bangladesh clinical dataset (5,288 raw records, 14 clinical/demographic features). The dataset exhibits severe class imbalance (6.47% diabetic). All models were evaluated with a stratified 80/20 train-test split, and compared across accuracy, precision, recall, F1-score, and ROC-AUC — with particular attention to diabetic-class recall, since accuracy alone was found to be misleading (baseline models scored 93.8–94.0% accuracy while missing 69–85% of diabetic patients). Two imbalance-handling strategies (class weighting and SMOTE) were compared against the imbalanced baseline, and all four algorithms were then tuned via 5-fold cross-validated grid/randomized search optimizing F1-score. After tuning, Random Forest achieved the best F1-score (0.412), XGBoost achieved the best ROC-AUC (0.881), and Logistic Regression achieved by far the highest recall (66.2%) at the cost of precision. `hypertensive` status was consistently the most influential predictor across all three interpretable models, with `glucose` a close second for the two tree-based models specifically. The results show that class-imbalance handling is essential on this dataset (though not uniformly beneficial — plain class weighting slightly hurt Random Forest, and hyperparameter tuning slightly hurt XGBoost's and KNN's test-set generalization on some metrics) and that model choice should depend on the intended use case (screening vs. confirmatory triage) rather than accuracy alone.
 
 ## 1. Introduction
 
@@ -25,7 +25,7 @@ This project uses the **DiaBD dataset**, a Bangladesh-specific clinical dataset,
 **Source file:** `data/diabd.csv` (copied from the downloaded `DiaBD A Diabetes Dataset for Enhanced Risk Analysi/` folder).
 
 - **Instances (raw):** 5,288
-- **Instances (after cleaning):** 5,281 (7 rows removed; see Section 4 and 9)
+- **Instances (after cleaning):** 5,276 (12 rows removed; see Section 4 and 9)
 - **Features:** 14 predictor columns + 1 target column
 - **Target:** `diabetic` (Yes/No), mapped to 1/0 for modelling
 - **Missing values:** none found in any column
@@ -36,14 +36,14 @@ This project uses the **DiaBD dataset**, a Bangladesh-specific clinical dataset,
 | Feature | Type | Description | Observed range (post-cleaning) |
 |---|---|---|---|
 | age | Numerical | Patient age (years) | 21 – 80 |
-| gender | Categorical | Female / Male | Female: 3,746 (70.9%), Male: 1,535 (29.1%) |
-| pulse_rate | Numerical | Resting pulse rate (bpm) | 30 – 133 (after removing 3 impossible <30 values) |
+| gender | Categorical | Female / Male | Female: 3,742 (70.9%), Male: 1,534 (29.1%) |
+| pulse_rate | Numerical | Resting pulse rate (bpm) | 36 – 133 (after removing 3 impossible <30 bpm values) |
 | systolic_bp | Numerical | Systolic blood pressure (mmHg) | 62 – 231 |
 | diastolic_bp | Numerical | Diastolic blood pressure (mmHg) | 45 – 119 |
-| glucose | Numerical | Blood glucose (mmol/L) | ~1 – 33.46 (after removing 1 impossible 0 value) |
-| height | Numerical | Height (m) | ~1.0 – 1.96 (after removing 3 impossible <1.0 m values) |
-| weight | Numerical | Weight (kg) | 3 – 100.7 |
-| bmi | Numerical | Body Mass Index | 1.22 – 574.13 in raw data; extreme values tied to the impossible-height rows removed above |
+| glucose | Numerical | Blood glucose (mmol/L) | 0.04 – 33.46 (after removing 1 impossible 0 value) |
+| height | Numerical | Height (m) | 1.22 – 1.96 (after widening the impossible-height threshold to <1.2 m, removing 6 rows) |
+| weight | Numerical | Weight (kg) | 23.2 – 100.7 (after removing 2 impossible low-BMI rows: a 3 kg and a 21.9 kg adult) |
+| bmi | Numerical | Body Mass Index | 11.47 – 54.08 (after removing 4 rows with bmi<10 or bmi>70; raw data ranged 1.22–574.13 due to the impossible height/weight rows removed above) |
 | family_diabetes | Binary flag (0/1) | Family history of diabetes | 3.2% positive |
 | hypertensive | Binary flag (0/1) | Currently hypertensive | 11.1% positive |
 | family_hypertension | Binary flag (0/1) | Family history of hypertension | — |
@@ -64,7 +64,7 @@ DiaBD Dataset
      |
 Data Inspection  (shape, dtypes, missing values, duplicates, describe)
      |
-Data Cleaning    (remove 7 physiologically impossible rows; documented, not silent)
+Data Cleaning    (remove 12 physiologically impossible rows; documented, not silent)
      |
 Exploratory Data Analysis  (distributions, class-wise comparisons, correlation, outliers)
      |
@@ -122,11 +122,11 @@ All figures below are generated directly by `src/eda.py` and saved in `outputs/f
 
 **Age** (`age_distribution.png`): Median age is 45 for non-diabetic vs. 50 for diabetic patients, consistent with diabetes risk increasing with age.
 
-**Hypertension** (`hypertensive_vs_target.png`): This is the single strongest categorical association found in the data. Among hypertensive patients (586 of 5,281, 11.1%), 31.4% are diabetic; among non-hypertensive patients, only 3.4% are diabetic. This large gap explains why `hypertensive` emerges as the top-ranked predictor in every model (Section 11).
+**Hypertension** (`hypertensive_vs_target.png`): This is the single strongest categorical association found in the data. Among hypertensive patients (585 of 5,276, 11.1%), 31.3% are diabetic; among non-hypertensive patients, only 3.4% are diabetic. This large gap explains why `hypertensive` emerges as the top-ranked (or near-top-ranked) predictor in every model (Section 11).
 
 **Gender** (`gender_vs_target.png`): Diabetes prevalence is broadly similar between genders in this sample (6.1% of female patients, 7.4% of male patients), a much smaller effect than hypertension status.
 
-**Family history of diabetes** (`family_diabetes_vs_target.png`): Counter-intuitively, the `family_diabetes=1` subgroup (169 patients) showed a *lower* diabetes rate (3.55%, 6 of 169) than the `family_diabetes=0` subgroup (6.57%, 336 of 5,112). Given the very small size of the `family_diabetes=1` subgroup, this is likely a sampling artifact rather than a reliable population-level relationship, and should not be over-interpreted.
+**Family history of diabetes** (`family_diabetes_vs_target.png`): Counter-intuitively, the `family_diabetes=1` subgroup (169 patients) showed a *lower* diabetes rate (3.55%, 6 of 169) than the `family_diabetes=0` subgroup (6.56%, 335 of 5,107). Given the very small size of the `family_diabetes=1` subgroup, this is likely a sampling artifact rather than a reliable population-level relationship, and should not be over-interpreted.
 
 **Correlation heatmap** (`correlation_heatmap.png`, numerical features only — encoded flags and identifiers excluded): The strongest correlations are `weight`–`bmi` (r = 0.84, expected since BMI is computed from weight and height) and `systolic_bp`–`diastolic_bp` (r = 0.72, expected physiologically). `glucose` shows only weak linear correlation with other numerical features (|r| < 0.16 with all others), suggesting it contributes largely independent predictive signal — consistent with its strong showing in feature importance.
 
@@ -135,18 +135,18 @@ All figures below are generated directly by `src/eda.py` and saved in `outputs/f
 ## 8. Class Imbalance
 
 - **Raw class distribution:** No = 4,946 (93.53%), Yes = 342 (6.47%).
-- **After stratified 80/20 split:** training set 93.51% / 6.49%, test set 93.57% / 6.43% — near-identical to the original ratio, confirming stratification worked correctly.
+- **After stratified 80/20 split:** training set 93.53% / 6.47%, test set 93.56% / 6.44% — near-identical to the original ratio, confirming stratification worked correctly.
 
-**Why accuracy is misleading here:** A classifier that always predicts "non-diabetic" would score 93.5% accuracy while achieving 0% recall on the class we actually care about detecting. This is exactly the failure mode observed in the baseline KNN model, which scored 93.09% accuracy but only 4.41% diabetic-class recall (Section 10).
+**Why accuracy is misleading here:** A classifier that always predicts "non-diabetic" would score 93.5% accuracy while achieving 0% recall on the class we actually care about detecting. This is close to the failure mode observed in the baseline KNN model, which scored 94.03% accuracy but only 14.71% diabetic-class recall (Section 10).
 
 **Balancing approaches used:**
-1. **Class weighting** — `class_weight="balanced"` for Logistic Regression and Random Forest (reweights the loss function to penalize misclassifying the minority class more heavily); `scale_pos_weight` (computed as `n_negative / n_positive` = 14.416 from the training data) for XGBoost. KNN has no equivalent parameter in scikit-learn, so it was left unweighted for this comparison (per the assignment's explicit instruction not to force an invalid approach onto KNN).
+1. **Class weighting** — `class_weight="balanced"` for Logistic Regression and Random Forest (reweights the loss function to penalize misclassifying the minority class more heavily); `scale_pos_weight` (computed as `n_negative / n_positive` = 14.458 from the training data) for XGBoost. KNN has no equivalent parameter in scikit-learn, so it was left unweighted for this comparison (per the assignment's explicit instruction not to force an invalid approach onto KNN).
 2. **SMOTE (Synthetic Minority Over-sampling Technique)** — generates synthetic minority-class (diabetic) samples by interpolating between existing minority-class neighbors. Applied **only to the training fold**, inside an `imblearn.pipeline.Pipeline`, so the test set and cross-validation validation folds are never touched by synthetic data (verified in Section 22).
 
 ## 9. Experimental Setup
 
 - **Train/test split:** 80% / 20%, `random_state=42`, `stratify=y`.
-- **Cleaning:** 7 rows removed for physiologically impossible values — glucose = 0 mmol/L (1 row, incompatible with a living patient), height < 1.0 m for an adult (3 rows: 0.36 m, 0.64 m, 0.99 m — two of these also produced BMI values of 574 and 156, confirming `bmi = weight / height²` in this dataset), and pulse_rate < 30 bpm (3 rows: values of 5, 10, and 5 bpm, incompatible with life). No duplicate rows were found. This is a targeted, documented removal of clear data-entry errors — not a blanket outlier-removal step (see Section 7 for outliers that were deliberately retained).
+- **Cleaning:** 12 rows removed for physiologically impossible values, identified via five conditions: glucose = 0 mmol/L (1 row, incompatible with a living patient); height < 1.2 m for an adult (6 rows: 0.36 m, 0.64 m, 0.99 m, and three separate rows sharing an identical, implausible 1.19 m / 55-60 kg pattern — two of the more extreme rows also produced BMI values of 574 and 156, confirming `bmi = weight / height²` in this dataset); pulse_rate < 30 bpm (3 rows: values of 5, 10, and 5 bpm, incompatible with life); and bmi < 10 or bmi > 70 (4 rows total, 2 of which overlap the height rule above — the two new catches were a 3 kg adult, bmi 1.22, and a 21.9 kg adult, bmi 8.29, neither of which was caught by the simpler height/glucose/pulse checks alone). The BMI-based check was added specifically because a raw `describe()` of the dataset shows a minimum adult weight of 3 kg, which is impossible but not flagged by height, glucose, or pulse_rate on its own — checking BMI catches implausible weight/height combinations directly. No duplicate rows were found. This is a targeted, documented removal of clear data-entry errors — not a blanket outlier-removal step (see Section 7 for outliers that were deliberately retained).
 - **Encoding:** `gender` one-hot encoded (`drop="if_binary"`); the five already-binary flag columns (`family_diabetes`, `hypertensive`, `family_hypertension`, `cardiovascular_disease`, `stroke`) passed through unchanged.
 - **Scaling:** `StandardScaler` for Logistic Regression and KNN (fit on the training fold only, inside each model's Pipeline); Random Forest and XGBoost use unscaled features, since tree-based splits are invariant to monotonic feature scaling.
 - **Cross-validation:** `StratifiedKFold(n_splits=5, shuffle=True, random_state=42)` for all hyperparameter tuning.
@@ -159,68 +159,69 @@ All figures below are generated directly by `src/eda.py` and saved in `outputs/f
 
 | Model | Accuracy | Precision | Recall | F1 Score | ROC-AUC |
 |---|---|---|---|---|---|
-| Logistic Regression | 0.9347 | 0.4762 | 0.1471 | 0.2247 | 0.8325 |
-| KNN | 0.9309 | 0.2727 | 0.0441 | 0.0759 | 0.6513 |
-| Random Forest | 0.9366 | 0.5333 | 0.1176 | 0.1928 | 0.8531 |
-| XGBoost | 0.9328 | 0.4545 | 0.2206 | 0.2970 | 0.8672 |
+| Logistic Regression | 0.9384 | 0.5600 | 0.2059 | 0.3011 | 0.8448 |
+| KNN | 0.9403 | 0.6667 | 0.1471 | 0.2410 | 0.7031 |
+| Random Forest | 0.9384 | 0.5789 | 0.1618 | 0.2529 | 0.8694 |
+| XGBoost | 0.9394 | 0.5526 | 0.3088 | 0.3962 | 0.8761 |
 
 *(`outputs/tables/baseline_results.csv`; confusion matrices: `outputs/figures/confusion_matrices_baseline.png`; ROC curves: `outputs/figures/roc_curves_baseline.png`)*
 
-All four baseline models score within 1.4 points of each other on accuracy (93.1–93.7%), yet their diabetic-class recall ranges from a very poor 4.4% (KNN) to a still-modest 22.1% (XGBoost). This is the clearest demonstration in this project of why accuracy alone is an unreliable metric for imbalanced classification.
+All four baseline models score within 0.2 points of each other on accuracy (93.84–94.03%), yet their diabetic-class recall ranges from a modest 14.7% (KNN) to 30.9% (XGBoost). This is the clearest demonstration in this project of why accuracy alone is an unreliable metric for imbalanced classification.
 
 ### 10.2 Balanced / SMOTE Results
 
 | Model | Accuracy | Precision | Recall | F1 Score | ROC-AUC |
 |---|---|---|---|---|---|
-| Logistic Regression (Baseline) | 0.9347 | 0.4762 | 0.1471 | 0.2247 | 0.8325 |
-| Logistic Regression (Class-Weighted) | 0.8486 | 0.2416 | **0.6324** | 0.3496 | 0.8293 |
-| Logistic Regression (SMOTE) | 0.8543 | 0.2440 | 0.6029 | 0.3475 | 0.8299 |
-| KNN (Baseline) | 0.9309 | 0.2727 | 0.0441 | 0.0759 | 0.6513 |
-| KNN (Class-Weighted, n/a) | 0.9309 | 0.2727 | 0.0441 | 0.0759 | 0.6513 |
-| KNN (SMOTE) | 0.8420 | 0.1847 | 0.4265 | 0.2578 | 0.7059 |
-| Random Forest (Baseline) | 0.9366 | 0.5333 | 0.1176 | 0.1928 | 0.8531 |
-| Random Forest (Class-Weighted) | 0.9385 | **0.6364** | 0.1029 | 0.1772 | 0.8658 |
-| Random Forest (SMOTE) | 0.9309 | 0.4444 | 0.2941 | 0.3540 | 0.8326 |
-| XGBoost (Baseline) | 0.9328 | 0.4545 | 0.2206 | 0.2970 | **0.8672** |
-| XGBoost (Class-Weighted) | 0.9253 | 0.3962 | 0.3088 | 0.3471 | 0.8534 |
-| XGBoost (SMOTE) | 0.9281 | 0.4091 | 0.2647 | 0.3214 | 0.8322 |
+| Logistic Regression (Baseline) | 0.9384 | 0.5600 | 0.2059 | 0.3011 | 0.8448 |
+| Logistic Regression (Class-Weighted) | 0.8305 | 0.2239 | **0.6618** | 0.3346 | 0.8426 |
+| Logistic Regression (SMOTE) | 0.8333 | 0.2216 | 0.6324 | 0.3282 | 0.8396 |
+| KNN (Baseline) | 0.9403 | 0.6667 | 0.1471 | 0.2410 | 0.7031 |
+| KNN (Class-Weighted, n/a) | 0.9403 | 0.6667 | 0.1471 | 0.2410 | 0.7031 |
+| KNN (SMOTE) | 0.8277 | 0.1968 | 0.5441 | 0.2891 | 0.7682 |
+| Random Forest (Baseline) | 0.9384 | 0.5789 | 0.1618 | 0.2529 | 0.8694 |
+| Random Forest (Class-Weighted) | 0.9337 | 0.4444 | 0.1176 | 0.1860 | 0.8662 |
+| Random Forest (SMOTE) | 0.9271 | 0.4182 | 0.3382 | 0.3740 | 0.8445 |
+| XGBoost (Baseline) | 0.9394 | 0.5526 | 0.3088 | 0.3962 | **0.8761** |
+| XGBoost (Class-Weighted) | 0.9347 | 0.4915 | 0.4265 | **0.4567** | 0.8642 |
+| XGBoost (SMOTE) | 0.9375 | **0.5208** | 0.3676 | 0.4310 | 0.8513 |
 
 *(`outputs/tables/balanced_results.csv`)*
 
 Key observations:
-- **Class weighting had a dramatic effect on Logistic Regression** (recall 14.7% → 63.2%, F1 0.225 → 0.350) but almost no effect on Random Forest (recall 11.8% → 10.3%, essentially unchanged) — Random Forest's default splits were apparently already reasonably balanced-agnostic, and `class_weight="balanced"` alone was not enough to move it; the tuned Random Forest in Section 10.3 (which also searches `max_depth`, `min_samples_leaf`, etc. jointly) achieves a bigger recall improvement.
-- **SMOTE improved recall for every single model**, most dramatically for KNN (4.4% → 42.6%), confirming that KNN's poor baseline recall was specifically an imbalance problem (with more synthetic minority neighbors available, KNN can now find diabetic neighbors).
-- **Every imbalance-handling strategy traded accuracy for recall.** This is expected and desired: on this dataset, high accuracy is easy but uninformative, while recall gains directly reflect catching more true diabetic patients.
+- **Class weighting had a dramatic effect on Logistic Regression** (recall 20.6% → 66.2%, F1 0.301 → 0.335) but actually *reduced* Random Forest's recall (16.2% → 11.8%, F1 0.253 → 0.186) — plain `class_weight="balanced"` alone was not just insufficient for Random Forest, it made its test-set performance worse; the tuned Random Forest in Section 10.3 (which searches `max_depth`, `min_samples_leaf`, etc. jointly alongside `class_weight`) is what actually delivers a recall improvement.
+- **SMOTE improved recall for every single model**, most dramatically for KNN (14.7% → 54.4%), consistent with a meaningful part of KNN's weak baseline recall being an imbalance problem (with more synthetic minority neighbors available, KNN can now find diabetic neighbors).
+- **Class weighting also had a striking effect on XGBoost**, raising its F1 from 0.396 to 0.457 (the highest F1 in this whole table, tuned models included) by lifting recall from 30.9% to 42.6% while giving up less precision than the other imbalance strategies.
+- **Most imbalance-handling strategies traded accuracy for recall**, as expected on a dataset where high accuracy is easy but uninformative. Random Forest's class-weighted result is the exception that proves the rule: it lost on both accuracy (93.8% → 93.4%) *and* recall (16.2% → 11.8%) at once, showing that `class_weight="balanced"` is not automatically beneficial in isolation.
 
 ### 10.3 Hyperparameter Tuning (5-fold CV, scoring = F1)
 
 | Model | Best CV F1 | Best Parameters |
 |---|---|---|
-| Logistic Regression | 0.3763 | `C=0.1`, `penalty='l1'`, `class_weight='balanced'` |
-| KNN | 0.2921 | `n_neighbors=3`, `weights='uniform'`, `p=2` |
-| Random Forest | 0.4369 | `n_estimators=200`, `max_depth=30`, `min_samples_split=2`, `min_samples_leaf=4`, `max_features='log2'`, `class_weight='balanced'` |
-| XGBoost | 0.4407 | `n_estimators=100`, `max_depth=6`, `learning_rate=0.1`, `subsample=0.8`, `colsample_bytree=1.0`, `scale_pos_weight=14.42` |
+| Logistic Regression | 0.3726 | `C=10`, `penalty='l1'`, `class_weight='balanced'` |
+| KNN | 0.2806 | `n_neighbors=3`, `weights='distance'`, `p=2` |
+| Random Forest | 0.4388 | `n_estimators=100`, `max_depth=30`, `min_samples_split=5`, `min_samples_leaf=4`, `max_features='log2'`, `class_weight='balanced'` |
+| XGBoost | 0.4148 | `n_estimators=200`, `max_depth=4`, `learning_rate=0.05`, `subsample=0.7`, `colsample_bytree=0.7`, `scale_pos_weight=1` |
 
 *(`outputs/tables/best_hyperparameters.csv`)*
 
-Notably, cross-validation **independently selected `class_weight="balanced"`** for both Logistic Regression and Random Forest, and the full computed `scale_pos_weight` for XGBoost — i.e., the search was free to keep these models unweighted (`class_weight=None`, `scale_pos_weight=1`) if that scored better on F1, and it did not. This is evidence, not an assumption, that imbalance-aware weighting genuinely helps on this dataset.
+Notably, cross-validation **independently selected `class_weight="balanced"`** for both Logistic Regression and Random Forest — the search was free to keep these two models unweighted if that scored better on F1, and it did not, which is evidence, not an assumption, that imbalance-aware weighting helps them on this dataset. XGBoost is the interesting exception: the search instead selected `scale_pos_weight=1` (i.e. no weighting at all), relying purely on `subsample`/`colsample_bytree`/a lower `learning_rate` to control overfitting to the majority class. This does not mean weighting never helps XGBoost — Section 10.2 shows a hand-picked `class_weight`-equivalent (`scale_pos_weight=14.458`) achieved the single highest F1 (0.4567) of any configuration in this entire study, tuned models included — it means the specific 30-iteration `RandomizedSearchCV` search used here did not land on that region of the joint hyperparameter space. This is flagged explicitly in Section 12 and Section 13 rather than glossed over.
 
 ### 10.4 Final Comparison (Tuned Models on the Untouched Test Set)
 
 | Model | Accuracy | Precision | Recall | F1 Score | ROC-AUC |
 |---|---|---|---|---|---|
-| Logistic Regression | 0.8477 | 0.2402 | **0.6324** | 0.3482 | 0.8285 |
-| KNN | 0.9309 | **0.3684** | 0.1029 | 0.1609 | 0.6231 |
-| Random Forest | 0.9300 | 0.4318 | 0.2794 | 0.3393 | **0.8627** |
-| XGBoost | 0.9196 | 0.3803 | 0.3971 | **0.3885** | 0.8561 |
+| Logistic Regression | 0.8305 | 0.2239 | **0.6618** | 0.3346 | 0.8427 |
+| KNN | 0.9299 | 0.3929 | 0.1618 | 0.2292 | 0.6722 |
+| Random Forest | 0.9271 | 0.4286 | 0.3971 | **0.4122** | 0.8675 |
+| XGBoost | 0.9375 | **0.5312** | 0.2500 | 0.3400 | **0.8813** |
 
 *(`outputs/tables/tuned_results.csv`, `outputs/tables/final_comparison.csv`; confusion matrices: `outputs/figures/confusion_matrices_tuned.png`; ROC curves: `outputs/figures/roc_curves.png`; bar chart: `outputs/figures/model_comparison.png`)*
 
 **Ranking by different criteria:**
-- **Highest recall (best at catching diabetic patients):** Logistic Regression (63.2%) — by a wide margin.
-- **Highest precision (fewest false alarms among positive predictions):** KNN (36.8%), but at very low recall (10.3%), making it clinically weak as a screening tool despite the precision figure.
-- **Highest F1-score (best precision/recall balance):** XGBoost (0.3885).
-- **Highest ROC-AUC (best overall ranking ability, threshold-independent):** Random Forest (0.8627), XGBoost close behind (0.8561).
+- **Highest recall (best at catching diabetic patients):** Logistic Regression (66.2%) — by a wide margin.
+- **Highest precision (fewest false alarms among positive predictions):** XGBoost (53.1%), but at only 25.0% recall — a large share of diabetic patients would still be missed if precision alone were prioritized.
+- **Highest F1-score (best precision/recall balance):** Random Forest (0.4122).
+- **Highest ROC-AUC (best overall ranking ability, threshold-independent):** XGBoost (0.8813), Random Forest close behind (0.8675).
 - **Simplest / fastest / most interpretable:** Logistic Regression (linear coefficients, fastest to train and predict).
 
 No single model dominates on every metric — this is discussed further in Section 12.
@@ -229,44 +230,45 @@ No single model dominates on every metric — this is discussed further in Secti
 
 *(Association with model predictions — not a claim of medical causation. All values are read directly from `outputs/tables/feature_importance_*.csv`.)*
 
-**Logistic Regression** (standardized |coefficient|, top 5): `hypertensive` (2.11), `glucose` (0.71), `bmi` (0.46), `height` (0.28), `age` (0.24).
+**Logistic Regression** (standardized |coefficient|, top 5): `hypertensive` (2.26), `family_hypertension` (2.11), `family_diabetes` (2.08, negative direction — see note below), `bmi` (1.25), `cardiovascular_disease` (0.86). `glucose` (0.71) ranks 8th.
 
-**Random Forest** (feature importance, top 5): `glucose` (0.226), `hypertensive` (0.186), `systolic_bp` (0.111), `diastolic_bp` (0.090), `bmi` (0.088).
+**Random Forest** (feature importance, top 5): `glucose` (0.231), `hypertensive` (0.175), `systolic_bp` (0.113), `diastolic_bp` (0.093), `weight` (0.090).
 
-**XGBoost** (feature importance, top 5): `hypertensive` (0.389), `glucose` (0.076), `family_hypertension` (0.068), `family_diabetes` (0.055), `cardiovascular_disease` (0.054).
+**XGBoost** (feature importance, top 5): `hypertensive` (0.474), `glucose` (0.103), `diastolic_bp` (0.046), `age` (0.045), `systolic_bp` (0.044).
 
 ![Feature Importance (XGBoost)](../outputs/figures/feature_importance.png)
 
-**Discussion:** `hypertensive` status and `glucose` level are consistently the two most influential features across all three models, though their relative ranking differs slightly (Random Forest ranks `glucose` first; Logistic Regression and XGBoost rank `hypertensive` first). This is directly consistent with the EDA finding in Section 7 that diabetes prevalence is roughly 9× higher among hypertensive patients (31.4%) than non-hypertensive patients (3.4%) in this dataset — a strong, medically plausible signal (hypertension and type-2 diabetes are well-documented comorbid conditions), which the models are correctly picking up as **associated with**, not necessarily causing, diabetes status.
+**Discussion:** `hypertensive` status is the single most consistently influential feature — ranked #1 for Logistic Regression and XGBoost, and #2 for Random Forest — directly consistent with the EDA finding in Section 7 that diabetes prevalence is roughly 9× higher among hypertensive patients (31.3%) than non-hypertensive patients (3.4%) in this dataset, a strong and medically plausible signal (hypertension and type-2 diabetes are well-documented comorbid conditions). `glucose` is the top feature for Random Forest and the #2 feature for XGBoost, but only the 8th-ranked feature for Logistic Regression — most likely because its linear signal is split across several numerical features that correlate with it once standardized (`bmi`, `weight`, and `height` all outrank it for Logistic Regression), an effect tree-based models are less prone to since each split simply picks whichever single feature best separates the classes at that node, regardless of what else correlates with it. Note also that Logistic Regression's `family_diabetes` coefficient is *negative* (family history associated with **lower** predicted risk in this specific dataset) — this mirrors the small-subgroup anomaly already flagged in Section 7 (`family_diabetes=1`, n=169) and should be read as a data-driven artifact of a small subgroup, not a medically meaningful reversal. All three models' importances are read as **associated with**, not necessarily causing, diabetes status.
 
 ## 12. Discussion
 
 **Which model performed best?** There is no single "best" model independent of use case:
-- If the priority is **not missing diabetic patients** (a first-pass screening tool, where a false positive only costs a follow-up test), **Logistic Regression** is the strongest choice: it catches 63.2% of diabetic patients in the test set, more than double any other tuned model, and remains the simplest and most interpretable model.
-- If the priority is a **balanced trade-off** between catching diabetic patients and not overwhelming clinicians with false alarms, **XGBoost** is the strongest choice: it has the best F1-score (0.3885) and the second-best ROC-AUC (0.8561).
-- If the priority is **overall ranking quality** (e.g. for triaging patients by risk score rather than a hard yes/no cutoff), **Random Forest** is the strongest choice, with the best ROC-AUC (0.8627).
-- **KNN was consistently the weakest model** on every imbalance-sensitive metric (baseline recall 4.4%, tuned recall 10.3%, tuned ROC-AUC 0.623 — the lowest of any model in any configuration) — likely because it has no built-in mechanism to account for class imbalance, and its SMOTE variant, while much better (42.6% recall), still trailed the tree-based models on F1 and precision.
+- If the priority is **not missing diabetic patients** (a first-pass screening tool, where a false positive only costs a follow-up test), **Logistic Regression** is the strongest choice: it catches 66.2% of diabetic patients in the test set, more than 1.6× any other tuned model, and remains the simplest and most interpretable model.
+- If the priority is a **balanced trade-off** between catching diabetic patients and not overwhelming clinicians with false alarms, **Random Forest** is the strongest choice: it has the best tuned F1-score (0.4122) and a strong ROC-AUC (0.8675).
+- If the priority is **overall ranking quality** (e.g. for triaging patients by risk score rather than a hard yes/no cutoff), **XGBoost** is the strongest choice, with the best ROC-AUC (0.8813).
+- **KNN was consistently the weakest model** on every imbalance-sensitive metric (baseline recall 14.7%, tuned recall 16.2%, tuned F1 0.2292, tuned ROC-AUC 0.6722 — all the lowest, or tied lowest, of any model in the final tuned comparison) — likely because it has no built-in mechanism to account for class imbalance; its SMOTE variant, while much better (54.4% recall), still trailed the tree-based models on F1 and precision.
 
-**Did balancing improve minority-class prediction?** Yes, clearly. Every imbalance-handling strategy (class weighting or SMOTE) improved diabetic-class recall for every model relative to its unweighted baseline (Section 10.2), at a predictable cost to precision and overall accuracy.
+**Did balancing improve minority-class prediction?** Mostly yes. Class weighting and/or SMOTE improved diabetic-class recall for Logistic Regression, KNN, and XGBoost relative to their unweighted baselines (Section 10.2). The clear exception was Random Forest under plain class weighting alone, whose recall actually *fell* (16.2% → 11.8%); Random Forest only benefited from imbalance handling once tuned jointly with its other hyperparameters (Section 10.3–10.4).
 
-**Did tuning improve results?** Mixed. Tuning improved F1-score for Random Forest (0.1928 → 0.3393) and, modestly, for XGBoost's balance of precision/recall (baseline F1 0.2970 → tuned F1 0.3885) and Logistic Regression's F1 (0.2247 → 0.3482, essentially matching its class-weighted variant since CV selected `class_weight="balanced"`). However, **tuned KNN's ROC-AUC (0.6231) was actually worse than its untuned baseline ROC-AUC (0.6513)** — cross-validation selected `n_neighbors=3` to maximize F1-score on the training folds, but a small `k` is a high-variance choice, and this appears to have overfit slightly to the specific patients in the training folds rather than generalizing as well on ranking quality (ROC-AUC) on the held-out test set. This is a useful illustration that optimizing one metric (F1) does not guarantee improvement on another (ROC-AUC), and that the choice of tuning metric matters (Section 6).
+**Did tuning improve results?** Mixed, and this project's tuning results carry a genuine lesson about the gap between cross-validation and held-out test performance. Tuning clearly improved Random Forest's test F1 (0.2529 → 0.4122) and recall (16.2% → 39.7%). But **XGBoost's test F1 actually got *worse* after tuning (0.3962 → 0.3400)**, even though the search's chosen configuration had the best cross-validated F1 (0.4148) among the non-Random-Forest candidates — those hyperparameters generalized less well to the held-out test set than XGBoost's untuned defaults did. **KNN's tuned ROC-AUC (0.6722) was also worse than its untuned baseline (0.7031)**, for a related reason: cross-validation selected `n_neighbors=3` to maximize F1-score on the training folds, a high-variance choice that did not transfer as cleanly to ROC-AUC on the held-out test set. Together, these two results are a useful illustration that optimizing a metric via cross-validation does not guarantee improvement on that same metric — or on a different metric — on genuinely unseen data, and that the choice of tuning metric and search space both matter (Section 6, Section 10.3).
 
-**Possible signs of overfitting:** Random Forest's tuned configuration (`max_depth=30`, `min_samples_leaf=4`) allows fairly deep, expressive trees; combined with its consistently strong training-vs-test gap pattern typical of Random Forest, some overfitting to the training folds is plausible, though its test-set ROC-AUC (0.8627, the best of all models) suggests this did not meaningfully harm its actual generalization on this dataset. KNN's tuning result (discussed above) is the clearest sign of a metric-driven overfitting effect in this project.
+**Possible signs of overfitting:** Random Forest's tuned configuration (`max_depth=30`, `min_samples_leaf=4`) allows fairly deep, expressive trees, yet its test-set ROC-AUC (0.8675) stayed close to its baseline (0.8694), suggesting this did not meaningfully harm its actual generalization on this dataset. XGBoost's test-F1 regression above is the clearer example of a metric-driven overfitting effect in this project: its cross-validated F1 (0.4148) overstated how well the chosen hyperparameters would generalize. Relatedly, Section 10.2 showed that a simple, hand-picked class-weighted XGBoost (no other tuning) reached F1 = 0.4567 — higher than *any* model in the final tuned comparison — which suggests the `RandomizedSearchCV(n_iter=30)` search for XGBoost did not fully explore the region of hyperparameter space where weighting helps most; a larger `n_iter` or a search space that couples `scale_pos_weight` more tightly with regularization parameters might close this gap.
 
-**Do simpler models perform competitively?** Yes — Logistic Regression, the simplest model in this comparison, achieved the highest recall of any tuned model and a competitive ROC-AUC (0.8285, close to the ensemble models' ~0.85–0.86), demonstrating that the relationship between these clinical features and diabetes status is substantially, though not entirely, linear.
+**Do simpler models perform competitively?** Partially. Logistic Regression, the simplest model in this comparison, achieved by far the highest recall of any tuned model, but its ROC-AUC (0.8427) trailed both tree-based ensembles (0.8675–0.8813) by a more noticeable margin than a purely-linear relationship would predict, suggesting the relationship between these clinical features and diabetes status is not purely linear.
 
 ## 13. Limitations
 
-- **Severe class imbalance** (6.47% diabetic) means even the best recall achieved (63.2%, Logistic Regression) still misses over a third of diabetic patients, and all models' precision remains low (24–43%), meaning a meaningful fraction of positive predictions are false alarms.
+- **Severe class imbalance** (6.47% diabetic) means even the best recall achieved (66.2%, Logistic Regression) still misses roughly a third of diabetic patients, and all models' precision remains low (22–53%), meaning a meaningful fraction of positive predictions are false alarms.
 - **Single-country, single-dataset sample:** the DiaBD dataset reflects one Bangladeshi clinical population; findings (e.g. the strength of the hypertension–diabetes association) may not generalize to other populations without external validation.
 - **Predictions are not clinical diagnoses.** These models are trained for a coursework comparative-analysis exercise and should not be used, as-is, for real clinical decision-making.
 - **Limited feature set:** the dataset does not include some risk factors known to be relevant to diabetes (e.g. diet, physical activity level, HbA1c, waist circumference), which likely constrains achievable performance.
 - **A small subgroup anomaly** was observed for `family_diabetes` (Section 7) — the `family_diabetes=1` subgroup is small (169 patients) and showed a lower-than-expected diabetes rate, which is more likely a sampling artifact than a reliable finding, and should not be treated as evidence that family history is protective.
+- **Tuned results can regress relative to cross-validation** (Section 12) — XGBoost's test F1 fell after tuning despite a strong CV score, and KNN's test ROC-AUC fell similarly; both are concrete reminders that CV performance is an estimate of generalization, not a guarantee, especially with a minority class this small (~340 positive cases split across 5 folds).
 - **Model generalizability requires external validation** on an independent dataset before any of these findings should be treated as robust beyond this specific sample and train/test split.
 
 ## 14. Conclusion
 
-This project compared Logistic Regression, KNN, Random Forest, and XGBoost for diabetes risk classification on the DiaBD Bangladesh dataset, with a specific focus on the dataset's severe class imbalance (6.47% diabetic). Baseline models achieved misleadingly high accuracy (93–94%) while catching very few diabetic patients (4–22% recall), directly demonstrating why accuracy alone is an inappropriate metric for this task. Both class weighting and SMOTE meaningfully improved diabetic-class recall across all models, and cross-validated hyperparameter tuning (optimizing F1-score) independently confirmed that imbalance-aware weighting improves performance on this dataset. After tuning, no single algorithm dominated every metric: **XGBoost offered the best precision/recall balance (F1 = 0.388)**, **Random Forest offered the best overall ranking ability (ROC-AUC = 0.863)**, and **Logistic Regression offered by far the highest diabetic-class recall (63.2%)** at the cost of precision. `hypertensive` status and `glucose` level were the two most consistently important predictors across all interpretable models, a finding directly grounded in, and consistent with, the underlying data. The main research question — how do these four algorithms compare, and how does imbalance handling affect that comparison — is answered with clear, reproducible, data-grounded evidence: **model selection for this task should be driven by the intended screening use case (favoring recall vs. favoring precision/balance) rather than by accuracy or by picking a single "winner" algorithm.**
+This project compared Logistic Regression, KNN, Random Forest, and XGBoost for diabetes risk classification on the DiaBD Bangladesh dataset, with a specific focus on the dataset's severe class imbalance (6.47% diabetic). Baseline models achieved misleadingly high accuracy (93.8–94.0%) while catching relatively few diabetic patients (14.7–30.9% recall), directly demonstrating why accuracy alone is an inappropriate metric for this task. Class weighting and SMOTE meaningfully improved diabetic-class recall for most models, though Random Forest needed full hyperparameter tuning — not class weighting alone — to actually benefit; cross-validated tuning independently confirmed that imbalance-aware weighting improves Logistic Regression and Random Forest on this dataset. After tuning, no single algorithm dominated every metric: **Random Forest offered the best precision/recall balance (F1 = 0.412)**, **XGBoost offered the best overall ranking ability (ROC-AUC = 0.881)**, and **Logistic Regression offered by far the highest diabetic-class recall (66.2%)** at the cost of precision. `hypertensive` status was the single most consistently important predictor across all interpretable models, and `glucose` was a close second specifically for the two tree-based models — findings directly grounded in, and consistent with, the underlying data. Tuning did not universally help: both XGBoost's and KNN's test performance regressed on at least one metric relative to their untuned baselines, despite good cross-validated scores — a useful reminder that cross-validated hyperparameter search optimizes an *estimate* of generalization, not generalization itself. The main research question — how do these four algorithms compare, and how does imbalance handling affect that comparison — is answered with clear, reproducible, data-grounded evidence: **model selection for this task should be driven by the intended screening use case (favoring recall vs. favoring precision/balance/ranking quality) rather than by accuracy or by picking a single "winner" algorithm.**
 
 ## 15. Future Work
 
@@ -274,7 +276,7 @@ This project compared Logistic Regression, KNN, Random Forest, and XGBoost for d
 - Perform external validation on an independent dataset (e.g. a different hospital or region) before considering any deployment.
 - Incorporate additional lifestyle and clinical variables (diet, physical activity, HbA1c, waist circumference) that are known diabetes risk factors but are absent from this dataset.
 - Apply explainable AI techniques (e.g. SHAP values) for a more rigorous, per-patient interpretability analysis beyond global feature importance.
-- If deployed as a research prototype, build a simple risk-score interface around the saved XGBoost/Random Forest pipeline (`outputs/models/`), clearly labeled as a research tool and not a diagnostic device.
+- If deployed as a research prototype, build a simple risk-score interface around the saved Random Forest/XGBoost pipeline (`outputs/models/`), clearly labeled as a research tool and not a diagnostic device.
 - Compare against deep learning approaches (e.g. a small feed-forward neural network) if a substantially larger dataset becomes available — with only 342 positive cases in the current dataset, deep learning is not justified here and would likely overfit.
 
 ---

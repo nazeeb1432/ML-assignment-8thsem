@@ -9,7 +9,7 @@ To compare the performance of four machine learning algorithms — **Logistic Re
 **DiaBD: A Diabetes Dataset for Enhanced Risk Analysis and Research in Bangladesh** (`data/diabd.csv`).
 
 - **Size (raw):** 5,288 patient records × 15 columns
-- **Size (after cleaning):** 5,281 records (7 rows removed — see "Preprocessing" below)
+- **Size (after cleaning):** 5,276 records (12 rows removed — see "Preprocessing" below)
 - **Target variable:** `diabetic` (Yes / No)
 - **Class distribution (raw):** No = 4,946 (93.53%), Yes = 342 (6.47%) — a severe ~14.5 : 1 imbalance
 - **Numerical features (8):** age, pulse_rate, systolic_bp, diastolic_bp, glucose (mmol/L), height (m), weight (kg), bmi
@@ -86,11 +86,11 @@ Because ~94% of patients are non-diabetic, **accuracy alone is misleading** — 
 
 *(from the actual run recorded in `outputs/tables/`; see `report/final_report.md` for full discussion)*
 
-- **All four baseline models score 93–94% accuracy but catch very few diabetic patients** — baseline diabetic-class recall ranged from 4.4% (KNN) to 22.1% (XGBoost), confirming that accuracy is a misleading metric on this dataset.
-- **Class weighting and SMOTE both substantially raised diabetic-class recall** at the cost of precision/accuracy — e.g. class-weighted Logistic Regression raised recall from 14.7% to 63.2% (F1 rose from 0.225 to 0.350).
-- **After hyperparameter tuning (5-fold CV, scoring = F1),** cross-validation itself selected `class_weight="balanced"` for Logistic Regression and Random Forest, and a high `scale_pos_weight` for XGBoost — confirming imbalance handling genuinely helps on this dataset rather than being an assumption we imposed.
-- **Final tuned test-set results:** XGBoost achieved the best F1-score (0.388) and a strong ROC-AUC (0.856); Random Forest achieved the best ROC-AUC (0.863); Logistic Regression achieved by far the best recall (63.2%) but at low precision (24.0%).
-- **`hypertensive` status and `glucose` were consistently the two strongest predictors** across all three interpretable models (Logistic Regression coefficients, Random Forest importances, XGBoost importances) — medically plausible given the known clinical association between hypertension and diabetes, and confirmed directly in the data (31.4% diabetes prevalence among hypertensive patients vs. 3.4% among non-hypertensive patients).
-- **Overall recommended model: XGBoost**, based on the best balance of precision and recall (F1) combined with near-best ROC-AUC — see `report/final_report.md` Section 12 for the full trade-off discussion.
+- **All four baseline models score 93.8–94.0% accuracy but catch relatively few diabetic patients** — baseline diabetic-class recall ranged from 14.7% (KNN) to 30.9% (XGBoost), confirming that accuracy is a misleading metric on this dataset.
+- **Class weighting and SMOTE mostly raised diabetic-class recall**, but not uniformly — class-weighted Logistic Regression raised recall from 20.6% to 66.2% (F1 rose from 0.301 to 0.335), while plain class weighting actually *hurt* Random Forest (recall fell from 16.2% to 11.8%); Random Forest only benefited from imbalance handling once tuned jointly with its other hyperparameters.
+- **After hyperparameter tuning (5-fold CV, scoring = F1),** cross-validation itself selected `class_weight="balanced"` for Logistic Regression and Random Forest — confirming imbalance-aware weighting genuinely helps on this dataset rather than being an assumption we imposed. Tuning did not universally help, though: XGBoost's test F1 actually fell after tuning (0.396 → 0.340), and KNN's test ROC-AUC fell too (0.703 → 0.672), both despite better cross-validated scores — a concrete example of CV performance not fully transferring to the held-out test set.
+- **Final tuned test-set results:** Random Forest achieved the best F1-score (0.412); XGBoost achieved the best ROC-AUC (0.881); Logistic Regression achieved by far the best recall (66.2%) but at low precision (22.4%).
+- **`hypertensive` status was the single most consistently important predictor** across all three interpretable models (rank 1 in Logistic Regression and XGBoost, rank 2 in Random Forest) — medically plausible given the known clinical association between hypertension and diabetes, and confirmed directly in the data (31.3% diabetes prevalence among hypertensive patients vs. 3.4% among non-hypertensive patients). `glucose` was the top predictor for the two tree-based models but dropped to rank 8 for Logistic Regression, likely diluted across correlated numeric features (bmi/weight/height) once standardized.
+- **Overall recommended model: Random Forest**, based on the best balance of precision and recall (F1) on the test set, with ROC-AUC close to XGBoost's — see `report/final_report.md` for the full trade-off discussion.
 
 The best model and every tuned pipeline are saved to `outputs/models/` via `joblib`.
